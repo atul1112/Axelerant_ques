@@ -1,0 +1,4 @@
+name = Custom Axelerant questions
+description = Axelerant questions
+core = 7.x
+package = Z Module

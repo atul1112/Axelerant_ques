@@ -1,0 +1,78 @@
+<?php
+
+//System Site Information form Alter : added new field 'siteapikey' and changed button Title
+function custom_axelerant_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'system_site_information_settings') {
+   $form['site_information']['siteapikey'] = array(
+     '#title' => t('Site API Key'),
+     '#description' => t('Enter Site API Key'),
+     '#type' => 'textfield',
+     /*'#attributes' => array('placeholder' => t('No API Key yet'),),*/
+     //Enter No API Key yet as a default value as stated in second point.
+     '#default_value' => !empty(variable_get('siteapikey')) ? variable_get('siteapikey') : 'No API Key yet',
+   );
+    $form['actions']['submit']['#value'] = t("Update Configuration");
+    $form['#submit'][] = 'custom_axelerant_form_alter_submit';
+ }
+}
+
+//show drupal message on form submit with Site API key value
+function custom_axelerant_form_alter_submit(&$form, &$form_state){
+  $site_api = $form_state['values']['siteapikey'];
+  drupal_set_message("The Site API Key has been saved with value: ".$site_api);
+}
+
+//Hook Menu for Json Code
+function custom_axelerant_menu(){
+  $items = array();
+    //SET pattern for all Page content type to 'node/[node:nid]'
+    $items['page_json/%/%'] = array(
+    'page callback' => 'custom_axelerant_node_to_json', 
+    'page arguments' => array(1,2), 
+    'access arguments' => array('access axelerant content'), 
+    'type' => MENU_CALLBACK 
+  );
+  return $items;
+}
+
+
+//Hook_permission
+function custom_axelerant_permission() {
+  return array(
+    'access axelerant content' => array(
+      'title' => t( 'Access Node as JSON content' ), 
+      'description' => t( 'Use the custom_axelerant_menu callbacks to retrieve data in JSON format for any Node' ) 
+    ) 
+  );
+}
+
+//Convert page content type to JSON code
+function custom_axelerant_node_to_json($type, $id){
+  global $node;
+  $nodes = node_load($id);
+  $siteapi = variable_get('siteapikey');
+  
+  if ($nodes->type == 'pages' && isset($siteapi) && ($siteapi!= 'No API Key yet')) {
+    switch ($type) {
+      case "node" :
+        $data = _node_to_json_get_node( $id );
+        break;
+    }
+    drupal_json_output( $data );
+  }
+  else{
+    drupal_access_denied();
+  }
+}
+
+function _node_to_json_get_node($id) {
+  $node = node_load( $id );
+  
+  // Make hook available
+  $node_array = module_invoke_all( "node_to_json_get_node", $node );
+  if (is_array( $node_array ) && ! empty( $node_array )) {
+    $node = $node_array;
+  }
+  
+  return $node;
+}
